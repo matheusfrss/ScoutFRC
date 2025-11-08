@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <a href="autonomo.html">Autônomo</a>
     <a href="teleop.html">Teleoperado</a>
     <a href="endgame.html">End Game</a>
+    <a href="graficos.html">Graficos</a>
   `;
 
   // listas automáticas para preencher selects

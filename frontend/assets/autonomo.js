@@ -1,13 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  // menu geral - em todos js
-  document.getElementById("menu-nav").innerHTML = `
-    <a href="index.html">Início</a>
-    <a href="autonomo.html" class="active">Autônomo</a>
-    <a href="teleop.html">Teleoperado</a>
-    <a href="endgame.html">End Game</a>
-  `;
-
   // opções do SELECT
   const opcoesLinha = ["Selecione", "Sim", "Não"];
 

@@ -1,6 +1,15 @@
 // executa o código somente depois que todo o HTML tiver carregado
 document.addEventListener("DOMContentLoaded", () => {
   
+   //  menu de todos os js -
+  document.getElementById("menu-nav").innerHTML = `
+    <a href="index.html" class="active">Início</a>
+    <a href="autonomo.html">Autônomo</a>
+    <a href="teleop.html">Teleoperado</a>
+    <a href="endgame.html">End Game</a>
+    <a href="graficos.html">Graficos</a>
+  `;
+ 
   // lista com todas as perguntas/campos do EndGame
   const config = [
     {
