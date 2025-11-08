@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Autônomo - Sistema Scout</title>
+  <link rel="stylesheet" href=".//assets/style.css">
+  <script src=".//assets/autonomo.js"></script>
+</head>
+<body>
+
+  <header>
+    <nav id="menu-nav"></nav>
+  </header>
+
+  <div class="container">
+    <h2>Fase Autônoma</h2>
+
+    <form id="form-autonomo">
+
+      <div class="campo">
+        <label for="linha">Ultrapassou a linha de largada?</label>
+        <select id="linha"></select>
+      </div>
+
+      <div class="campo">
+        <label for="artefatosMedievais">Artefatos (idade média):</label>
+        <input id="artefatosMedievais" type="number" min="0" value="0">
+      </div>
+
+      <div class="campo">
+        <label for="artefatosPreHistoricos">Artefatos (pré-históricos):</label>
+        <input id="artefatosPreHistoricos" type="number" min="0" value="0">
+      </div>
+
+      <div class="navegacao">
+        <button type="button" id="btnVoltar">⬅ Voltar</button>
+        <button type="button" id="btnProximo">Próximo ➜</button>
+      </div>
+
+    </form>
+  </div>
+
+</body>
+</html>
