@@ -35,9 +35,9 @@ def criar_tabela():
     except Exception as e:
         print(f"❌ Erro ao criar tabela: {e}")
 
-# Rota para salvar robô
+# Rota para salvar 
 @app.route('/api/salvar_robo', methods=['POST'])
-def salvar_robo():
+def salvar_robo():    
     try:
         dados = request.json
         print("📝 Dados recebidos:", dados)

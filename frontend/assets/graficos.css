@@ -59,24 +59,83 @@ body {
 
 .section h2 {
   font-size: 1.6rem;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.chart-container {
+/* ===== CONTAINERS DE GRÁFICO ===== */
+.chart-card {
   background-color: #1e293b;
   padding: 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 600px; /* Centralização e limite */
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
 }
 
-.chart-container h3 {
+.chart-card h3 {
   font-size: 1.2rem;
   margin-bottom: 1rem;
-  color: #f1f5f9;
+  color: #f8fafc;
+  border-left: 3px solid #0ea5ff;
+  padding-left: 0.5rem;
+}
+
+/* ===== LAYOUT - COLUNA ÚNICA ===== */
+.chart-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.bottom-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.chart-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ===== ALTURA DOS CANVAS ===== */
+.chart-card canvas {
+  height: 300px !important;
+  width: 100% !important;
+}
+
+/* ===== LEGENDA DOS GRÁFICOS ===== */
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-legend span {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chart-legend i {
+  width: 18px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
 }
 
 /* ===== RODAPÉ ===== */
@@ -86,4 +145,217 @@ body {
   background-color: #111827;
   border-top: 2px solid #1e293b;
   color: #9ca3af;
+  margin-top: 2rem;
+}
+
+/* ===== TABELA DE DESEMPENHO ===== */
+.tabela-container {
+  background: linear-gradient(145deg, #1a2335, #151c2a);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 2rem;
+}
+
+.tabela-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tabela-header h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #f1f5f9;
+  border-left: 4px solid #0ea5ff;
+  padding-left: 12px;
+}
+
+#buscaEquipe {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: white;
+  font-size: 0.9rem;
+  min-width: 250px;
+  transition: all 0.3s ease;
+}
+
+#buscaEquipe:focus {
+  outline: none;
+  border-color: #0ea5ff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 3px rgba(14, 165, 255, 0.1);
+}
+
+#buscaEquipe::placeholder {
+  color: #94a3b8;
+}
+
+/* ===== TABELA ===== */
+.tabela-desempenho {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tabela-desempenho thead {
+  background: linear-gradient(135deg, #1e40af, #1e3a8a);
+}
+
+.tabela-desempenho th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #334155;
+}
+
+.tabela-desempenho td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.tabela-desempenho tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tabela-desempenho tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===== COLUNAS ESPECÍFICAS ===== */
+.tabela-desempenho td:first-child {
+  font-weight: 700;
+  color: #0ea5ff;
+  font-size: 1rem;
+}
+
+.tabela-desempenho td:nth-child(2) {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #f1f5f9;
+}
+
+.tabela-desempenho td:nth-child(3),
+.tabela-desempenho td:nth-child(4),
+.tabela-desempenho td:nth-child(5),
+.tabela-desempenho td:nth-child(6) {
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ===== TAGS DE STATUS ===== */
+.status-tag {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  min-width: 70px;
+  text-align: center;
+}
+
+.status-top {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.status-bom {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: white;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.status-medio {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: white;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+/* ===== BADGE DE ESTRATÉGIA ===== */
+.estrategia-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+/* ===== ANIMAÇÕES ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tabela-desempenho tbody tr {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.tabela-desempenho tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.tabela-desempenho tbody tr:nth-child(2) { animation-delay: 0.15s; }
+.tabela-desempenho tbody tr:nth-child(3) { animation-delay: 0.2s; }
+.tabela-desempenho tbody tr:nth-child(4) { animation-delay: 0.25s; }
+.tabela-desempenho tbody tr:nth-child(5) { animation-delay: 0.3s; }
+
+/* ===== RESPONSIVO ===== */
+@media (max-width: 900px) {
+  .main {
+    padding: 1.5rem;
+  }
+
+  .chart-card canvas {
+    height: 250px !important;
+  }
+
+  .tabela-container {
+    padding: 16px;
+  }
+  
+  .tabela-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  #buscaEquipe {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .tabela-desempenho {
+    font-size: 0.8rem;
+  }
+  
+  .tabela-desempenho th,
+  .tabela-desempenho td {
+    padding: 10px 8px;
+  }
+  
+  .status-tag {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    min-width: 60px;
+  }
 }

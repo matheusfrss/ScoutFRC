@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Início - Sistema Scout</title>
-  <link rel="stylesheet" href=".//assets/style.css">
-  <script src=".//assets/script.js"></script>
+  <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
-
+  
    <header>
     <nav id="menu-nav"></nav>
    </header>
@@ -18,32 +17,46 @@
     <form id="form-inicio">
       <div class="campo">
         <label for="numPartida">Número da partida:</label>
-        <input id="numPartida" type="number">
+        <input id="numPartida" type="number" min="1" required>
       </div>
 
       <div class="campo">
         <label for="tipoPartida">Tipo de partida:</label>
-        <select id="tipoPartida"></select>
+        <select id="tipoPartida" required>
+          <option value="">Selecione...</option>
+          <option value="qualificatoria">Qualificatória</option>
+          <option value="eliminatoria">Eliminatória</option>
+          <option value="amistosa">Amistosa</option>
+        </select>
       </div>
 
       <div class="campo">
         <label for="numEquipe">Número da equipe:</label>
-        <input id="numEquipe" type="number">
+        <input id="numEquipe" type="number" min="1" required>
       </div>
 
       <div class="campo">
-        <label for="corAliança">Cor da aliança:</label>
-        <select id="corAliança"></select>
+        <label for="corAlianca">Cor da aliança:</label>
+        <select id="corAlianca" required>
+          <option value="">Selecione...</option>
+          <option value="vermelho">Vermelho</option>
+          <option value="azul">Azul</option>
+        </select>
       </div>
 
       <div class="campo">
         <label for="posicao">Posição na arena:</label>
-        <select id="posicao"></select>
+        <select id="posicao" required>
+          <option value="">Selecione...</option>
+          <option value="1">Posição 1</option>
+          <option value="2">Posição 2</option>
+          <option value="3">Posição 3</option>
+        </select>
       </div>
 
       <div class="campo">
         <label for="nomeScout">Nome do scout:</label>
-        <input id="nomeScout" type="text">
+        <input id="nomeScout" type="text" required>
       </div>
 
       <div class="navegacao">
@@ -52,5 +65,6 @@
     </form>
   </div>
 
+  <script src="./assets/script.js"></script>
 </body>
 </html>

@@ -1,52 +1,57 @@
 // executa o código somente depois que todo o HTML tiver carregado
 document.addEventListener("DOMContentLoaded", () => {
   
-   //  menu de todos os js -
   document.getElementById("menu-nav").innerHTML = `
     <a href="index.html" class="active">Início</a>
     <a href="autonomo.html">Autônomo</a>
     <a href="teleop.html">Teleoperado</a>
     <a href="endgame.html">End Game</a>
-    <a href="graficos.html">Graficos</a>
+    <a href="graficos.html">Gráficos</a>
   `;
- 
+
   // lista com todas as perguntas/campos do EndGame
   const config = [
     {
       labelId: "labelCompleto",
       label: "Estacionou completamente no poço de escavação?",
       selectId: "estacionouCompleto",
-      opcoes: ["Selecione", "Sim", "Não"]
+      opcoes: ["Selecione", "Sim", "Não"],
+      chave: "labelCompleto"
     },
     {
       labelId: "labelParcial",
       label: "Estacionou parcialmente no sítio arqueológico?",
       selectId: "estacionouParcial",
-      opcoes: ["Selecione", "Sim", "Não"]
+      opcoes: ["Selecione", "Sim", "Não"],
+      chave: "labelParcial"
     },
     {
       labelId: "labelParou",
       label: "O robô parou?",
       selectId: "roboParou",
-      opcoes: ["Selecione", "Sim", "Não"]
+      opcoes: ["Selecione", "Sim", "Não"],
+      chave: "parou"
     },
     {
       labelId: "labelPenalidades",
       label: "Penalidades:",
       inputId: "penalidades",
-      tipo: "input"
+      tipo: "input",
+      chave: "penalidades"
     },
     {
       labelId: "labelEstrategia",
       label: "Estratégia do robô:",
       selectId: "estrategia",
-      opcoes: ["Selecione", "Robô de defesa", "Robô de ataque"]
+      opcoes: ["Selecione", "Robô de defesa", "Robô de ataque"],
+      chave: "estrategia"
     },
     {
       labelId: "labelObservacoes",
       label: "Observações:",
       inputId: "observacoes",
-      tipo: "textarea"
+      tipo: "textarea",
+      chave: "observacoes"
     }
   ];
 
@@ -65,51 +70,93 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // valor vazio para "Selecione"
         option.value = op.toLowerCase() === "selecione" ? "" : op.toLowerCase();
+
         select.appendChild(option);
       });
     }
   });
 
-  // BOTÃO FINALIZAR CORRIGIDO
-  document.getElementById("finalizarBtn").addEventListener("click", async () => {
+  // botão finalizar - CORRIGIDO
+  document.getElementById("finalizarBtn").addEventListener("click", () => {
+    // ✅ PEGA O NÚMERO DA EQUIPE SALVO NA PÁGINA INICIAL
+    const numEquipe = localStorage.getItem('numEquipeAtual');
+    
+    if (!numEquipe) {
+      alert("❌ Número da equipe não encontrado! Volte à página inicial e selecione uma equipe.");
+      return;
+    }
+
     const dadosEndgame = {};
 
-    // Capturar dados do EndGame
+    // captura os dados do formulário
     config.forEach(campo => {
-      const elemento = document.getElementById(campo.selectId) || document.getElementById(campo.inputId);
-      dadosEndgame[campo.labelId] = elemento.value.trim();
+      const elemento =
+        document.getElementById(campo.selectId) ||
+        document.getElementById(campo.inputId);
+
+      if (elemento) {
+        dadosEndgame[campo.chave] = elemento.value.trim();
+      }
     });
 
-    // Pegar dados de todas as páginas
+    // Validação dos campos obrigatórios
+    if (!dadosEndgame.labelCompleto || !dadosEndgame.labelParcial || !dadosEndgame.parou || !dadosEndgame.estrategia) {
+      alert("❌ Por favor, preencha todos os campos obrigatórios do End Game.");
+      return;
+    }
+
+    // Estrutura compatível com o grafico.js
     const dadosCompletos = {
-      numEquipe: localStorage.getItem('numEquipe') || '0',
-      autonomo: JSON.parse(localStorage.getItem('dadosAutonomo') || '{}'),
-      teleop: JSON.parse(localStorage.getItem('dadosTeleop') || '{}'),
-      endgame: dadosEndgame
+      num_equipe: numEquipe,
+      estrategia: dadosEndgame.estrategia,
+      dados: {
+        endgame: {
+          labelCompleto: dadosEndgame.labelCompleto,
+          labelParcial: dadosEndgame.labelParcial,
+          parou: dadosEndgame.parou,
+          penalidades: dadosEndgame.penalidades || "0"
+        }
+      },
+      observacoes: dadosEndgame.observacoes || ""
     };
 
-    console.log("📤 Enviando dados:", dadosCompletos);
-
+    // SALVA NO LOCALSTORAGE 
     try {
-      // Enviar para o Flask
-      const response = await fetch('http://localhost:5000/api/salvar_robo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dadosCompletos)
-      });
-
-      const resultado = await response.json();
+      // Pega scouts existentes ou cria array vazio
+      const scoutsExistentes = JSON.parse(localStorage.getItem('scouts')) || [];
       
-      if (resultado.status === "sucesso") {
-        alert("✅ Scout salvo com sucesso no banco de dados!");
-        window.location.href = "index.html";
+      // Verifica se já existe um scout para esta equipe
+      const scoutExistenteIndex = scoutsExistentes.findIndex(scout => scout.num_equipe === numEquipe);
+      
+      if (scoutExistenteIndex !== -1) {
+        // ✅ ATUALIZA scout existente (adiciona/mantém endgame)
+        scoutsExistentes[scoutExistenteIndex].dados.endgame = dadosCompletos.dados.endgame;
+        scoutsExistentes[scoutExistenteIndex].estrategia = dadosCompletos.estrategia;
+        scoutsExistentes[scoutExistenteIndex].observacoes = dadosCompletos.observacoes;
+        console.log("✅ EndGame ATUALIZADO para equipe:", numEquipe);
       } else {
-        alert("❌ Erro ao salvar: " + resultado.message);
+        // Cria novo scout
+        scoutsExistentes.push(dadosCompletos);
+        console.log("✅ NOVO scout com EndGame criado para equipe:", numEquipe);
       }
+      
+      // Salva de volta no localStorage
+      localStorage.setItem('scouts', JSON.stringify(scoutsExistentes));
+      
+      console.log('💾 EndGame salvo com sucesso!', dadosCompletos);
+      alert('Dados do End Game salvos com sucesso!');
+      
+      // Redireciona para a página de gráficos
+      window.location.href = 'graficos.html';
+      
     } catch (error) {
-      alert("❌ Erro de conexão: " + error.message);
+      console.error('❌ Erro ao salvar EndGame:', error);
+      alert('Erro ao salvar dados. Verifique o console.');
     }
+  });
+
+  // Botão Voltar
+  document.getElementById("voltarBtn").addEventListener("click", () => {
+    window.location.href = 'teleop.html';
   });
 });
