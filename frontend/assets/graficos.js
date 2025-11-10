@@ -1,3 +1,4 @@
+localStorage.clear();
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Federal Force Scout System - Iniciando...");
 
