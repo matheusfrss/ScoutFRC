@@ -3,23 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <title>Início - Sistema Scout</title>
+
+  <!-- Estilo principal -->
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
   
-   <header>
+  <!-- ===================== CABEÇALHO ===================== -->
+  <header>
     <nav id="menu-nav"></nav>
-   </header>
+  </header>
 
-  <div class="container">
+  <!-- ===================== CONTEÚDO PRINCIPAL ===================== -->
+  <main class="container">
     <h2>Informações da Partida</h2>
 
     <form id="form-inicio">
+
+      <!-- Número da partida -->
       <div class="campo">
         <label for="numPartida">Número da partida:</label>
         <input id="numPartida" type="number" min="1" required>
       </div>
 
+      <!-- Tipo de partida -->
       <div class="campo">
         <label for="tipoPartida">Tipo de partida:</label>
         <select id="tipoPartida" required>
@@ -30,11 +37,13 @@
         </select>
       </div>
 
+      <!-- Número da equipe -->
       <div class="campo">
         <label for="numEquipe">Número da equipe:</label>
         <input id="numEquipe" type="number" min="1" required>
       </div>
 
+      <!-- Cor da aliança -->
       <div class="campo">
         <label for="corAlianca">Cor da aliança:</label>
         <select id="corAlianca" required>
@@ -44,6 +53,7 @@
         </select>
       </div>
 
+      <!-- Posição -->
       <div class="campo">
         <label for="posicao">Posição na arena:</label>
         <select id="posicao" required>
@@ -54,17 +64,38 @@
         </select>
       </div>
 
+      <!-- Nome do scout -->
       <div class="campo">
         <label for="nomeScout">Nome do scout:</label>
         <input id="nomeScout" type="text" required>
       </div>
 
+      <!-- Botão próximo -->
       <div class="navegacao">
         <button type="button" id="btnProximo">Próximo ➜</button>
       </div>
-    </form>
-  </div>
 
+    </form>
+
+    <!-- ===================== CONTROLES DE SINCRONIZAÇÃO ===================== -->
+    <section id="sync-controls" style="margin-top: 1.5rem;">
+      <h3>Sincronização</h3>
+      <p>
+        Itens pendentes: <strong id="outboxCount">0</strong>
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btnSync" type="button">Forçar Sincronização</button>
+        <button id="btnMigrate" type="button">Migrar dados antigos (scouts)</button>
+        <button id="btnLimpar" type="button">Limpar dados locais</button>
+      </div>
+      <p style="font-size:0.9rem;color:#555;margin-top:8px;">
+        Observação: se o dispositivo estiver offline, os registros serão guardados localmente e sincronizados quando houver conexão.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Script principal -->
   <script src="./assets/script.js"></script>
 </body>
 </html>

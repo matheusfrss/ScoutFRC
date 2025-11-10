@@ -3,23 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <title>Autônomo - Sistema Scout</title>
-  <link rel="stylesheet" href=".//assets/style.css">
-  <script src=".//assets/autonomo.js"></script>
+  <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
 
+  <!-- ====== CABEÇALHO ====== -->
   <header>
     <nav id="menu-nav"></nav>
   </header>
 
-  <div class="container">
+  <!-- ====== CONTEÚDO PRINCIPAL ====== -->
+  <main class="container">
     <h2>Fase Autônoma</h2>
 
     <form id="form-autonomo">
 
       <div class="campo">
         <label for="linha">Ultrapassou a linha de largada?</label>
-        <select id="linha"></select>
+        <select id="linha" required>
+          <option value="">Selecione...</option>
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
       </div>
 
       <div class="campo">
@@ -38,7 +43,10 @@
       </div>
 
     </form>
-  </div>
+  </main>
 
+  <!-- ====== SCRIPTS ====== -->
+  <script src="./assets/script.js"></script>
+  <script src="./assets/autonomo.js"></script>
 </body>
 </html>

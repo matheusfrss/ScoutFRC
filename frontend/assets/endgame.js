@@ -1,162 +1,164 @@
-// executa o código somente depois que todo o HTML tiver carregado
-document.addEventListener("DOMContentLoaded", () => {
-  
-  document.getElementById("menu-nav").innerHTML = `
-    <a href="index.html" class="active">Início</a>
+// frontend/assets/endgame.js
+// Endgame — segue padrão: atualiza 'scouts' local, cria outboxItem {numEquipe, fase:'endgame', payload,...}, tenta sync
+
+document.addEventListener('DOMContentLoaded', () => {
+  // menu (padronizado)
+  const navHtml = `
+    <a href="index.html">Início</a>
     <a href="autonomo.html">Autônomo</a>
     <a href="teleop.html">Teleoperado</a>
-    <a href="endgame.html">End Game</a>
+    <a href="endgame.html" class="active">End Game</a>
     <a href="graficos.html">Gráficos</a>
   `;
+  const navEl = document.getElementById('menu-nav');
+  if (navEl) navEl.innerHTML = navHtml;
 
-  // lista com todas as perguntas/campos do EndGame
-  const config = [
-    {
-      labelId: "labelCompleto",
-      label: "Estacionou completamente no poço de escavação?",
-      selectId: "estacionouCompleto",
-      opcoes: ["Selecione", "Sim", "Não"],
-      chave: "labelCompleto"
-    },
-    {
-      labelId: "labelParcial",
-      label: "Estacionou parcialmente no sítio arqueológico?",
-      selectId: "estacionouParcial",
-      opcoes: ["Selecione", "Sim", "Não"],
-      chave: "labelParcial"
-    },
-    {
-      labelId: "labelParou",
-      label: "O robô parou?",
-      selectId: "roboParou",
-      opcoes: ["Selecione", "Sim", "Não"],
-      chave: "parou"
-    },
-    {
-      labelId: "labelPenalidades",
-      label: "Penalidades:",
-      inputId: "penalidades",
-      tipo: "input",
-      chave: "penalidades"
-    },
-    {
-      labelId: "labelEstrategia",
-      label: "Estratégia do robô:",
-      selectId: "estrategia",
-      opcoes: ["Selecione", "Robô de defesa", "Robô de ataque"],
-      chave: "estrategia"
-    },
-    {
-      labelId: "labelObservacoes",
-      label: "Observações:",
-      inputId: "observacoes",
-      tipo: "textarea",
-      chave: "observacoes"
-    }
-  ];
+  // elements
+  const selCompleto = document.getElementById('estacionouCompleto');
+  const selParcial = document.getElementById('estacionouParcial');
+  const selParou = document.getElementById('roboParou');
+  const inpPenal = document.getElementById('penalidades');
+  const selEstrat = document.getElementById('estrategia');
+  const taObs = document.getElementById('observacoes');
+  const inpNumEquipe = document.getElementById('numEquipeInput');
 
-  // percorre cada item da lista e adiciona o conteúdo na tela
-  config.forEach(campo => {
-    // preenche o texto do label no HTML
-    document.getElementById(campo.labelId).textContent = campo.label;
+  const btnVoltar = document.getElementById('btnVoltar');
+  const btnFinalizar = document.getElementById('finalizarBtn');
 
-    // se o campo for um select (possui opcoes), adiciona as opções nele
-    if (campo.opcoes) {
-      const select = document.getElementById(campo.selectId);
+  // preencher selects com opções simples
+  preencherSelectPlaceholderOptions(selCompleto, ['Selecione', 'Sim', 'Não']);
+  preencherSelectPlaceholderOptions(selParcial, ['Selecione', 'Sim', 'Não']);
+  preencherSelectPlaceholderOptions(selParou, ['Selecione', 'Sim', 'Não']);
 
-      campo.opcoes.forEach(op => {
-        const option = document.createElement("option");
-        option.textContent = op;
+  // Voltar
+  if (btnVoltar) btnVoltar.addEventListener('click', () => window.location.href = 'teleop.html');
 
-        // valor vazio para "Selecione"
-        option.value = op.toLowerCase() === "selecione" ? "" : op.toLowerCase();
+  // Finalizar
+  if (btnFinalizar) {
+    btnFinalizar.addEventListener('click', async () => {
+      // pega equipe: usa input se preenchido, senão pega do localStorage numEquipeAtual
+      let numEquipe = null;
+      const v = inpNumEquipe && inpNumEquipe.value ? Number(inpNumEquipe.value) : null;
+      if (v && !Number.isNaN(v) && v > 0) numEquipe = v;
+      else {
+        const saved = localStorage.getItem('numEquipeAtual');
+        if (saved) numEquipe = Number(saved);
+      }
 
-        select.appendChild(option);
-      });
-    }
-  });
+      if (!numEquipe) {
+        alert('Número da equipe não informado. Preencha o campo ou volte à página inicial para selecionar a equipe.');
+        return;
+      }
 
-  // botão finalizar - CORRIGIDO
-  document.getElementById("finalizarBtn").addEventListener("click", () => {
-    // ✅ PEGA O NÚMERO DA EQUIPE SALVO NA PÁGINA INICIAL
-    const numEquipe = localStorage.getItem('numEquipeAtual');
-    
-    if (!numEquipe) {
-      alert("❌ Número da equipe não encontrado! Volte à página inicial e selecione uma equipe.");
-      return;
-    }
+      // valida selects
+      if (!selCompleto.value) { alert('Selecione se estacionou completo (Sim/Não)'); selCompleto.focus(); return; }
+      if (!selParcial.value) { alert('Selecione se estacionou parcial (Sim/Não)'); selParcial.focus(); return; }
+      if (!selParou.value) { alert('Selecione se o robô parou (Sim/Não)'); selParou.focus(); return; }
 
-    const dadosEndgame = {};
+      // montar dados do endgame
+      const dadosEndgame = {
+        estacionouCompleto: selCompleto.value === 'sim',
+        estacionouParcial: selParcial.value === 'sim',
+        roboParou: selParou.value === 'sim',
+        penalidades: (inpPenal && inpPenal.value) ? String(inpPenal.value).trim() : '',
+        estrategia: (selEstrat && selEstrat.value) ? selEstrat.value : '',
+        observacoes: (taObs && taObs.value) ? taObs.value.trim() : '',
+      };
 
-    // captura os dados do formulário
-    config.forEach(campo => {
-      const elemento =
-        document.getElementById(campo.selectId) ||
-        document.getElementById(campo.inputId);
+      // full record (compatível com scouts/legado)
+      const dadosCompletos = {
+        num_equipe: numEquipe,
+        estrategia: dadosEndgame.estrategia || '',
+        dados: {
+          endgame: dadosEndgame
+        },
+        timestamp: new Date().toISOString()
+      };
 
-      if (elemento) {
-        dadosEndgame[campo.chave] = elemento.value.trim();
+      try {
+        // 1) atualizar/insert em 'scouts' local
+        const raw = localStorage.getItem('scouts');
+        let scoutsExistentes = [];
+        try { scoutsExistentes = raw ? JSON.parse(raw) : []; } catch (e) { scoutsExistentes = []; }
+
+        const idx = scoutsExistentes.findIndex(s => Number(s.num_equipe) === Number(numEquipe));
+        if (idx !== -1) {
+          scoutsExistentes[idx].dados = scoutsExistentes[idx].dados || {};
+          scoutsExistentes[idx].dados.endgame = dadosEndgame;
+          scoutsExistentes[idx].timestamp = dadosCompletos.timestamp;
+          console.log('✅ Endgame ATUALIZADO para equipe:', numEquipe);
+        } else {
+          scoutsExistentes.push(dadosCompletos);
+          console.log('✅ NOVO scout (endgame) criado para equipe:', numEquipe);
+        }
+
+        localStorage.setItem('scouts', JSON.stringify(scoutsExistentes));
+
+        // 2) criar outboxItem padronizado
+        const outboxItem = {
+          numEquipe: Number(numEquipe),
+          fase: 'endgame',
+          payload: dadosEndgame,
+          full_record: dadosCompletos,
+          timestamp: new Date().toISOString()
+        };
+
+        // salvar em outbox via função global se existir
+        if (typeof saveToOutbox === 'function') {
+          saveToOutbox(outboxItem);
+        } else {
+          try {
+            const arr = JSON.parse(localStorage.getItem('outbox') || '[]');
+            arr.push(outboxItem);
+            localStorage.setItem('outbox', JSON.stringify(arr));
+          } catch (e) {
+            console.warn('Falha ao gravar outbox manualmente', e);
+          }
+        }
+
+        // tentar sincronizar agora
+        if (typeof syncOutbox === 'function') {
+          await syncOutbox();
+        }
+        if (typeof updateOutboxCount === 'function') updateOutboxCount();
+
+        alert('Dados finalizados e salvos! Obrigado.');
+        // redireciona para página inicial (ou onde preferir)
+        window.location.href = 'index.html';
+      } catch (err) {
+        console.error('Erro ao finalizar endgame:', err);
+        alert('Erro ao salvar dados. Veja o console.');
       }
     });
+  }
 
-    // Validação dos campos obrigatórios
-    if (!dadosEndgame.labelCompleto || !dadosEndgame.labelParcial || !dadosEndgame.parou || !dadosEndgame.estrategia) {
-      alert("❌ Por favor, preencha todos os campos obrigatórios do End Game.");
-      return;
-    }
+  // permitir Enter no form
+  const form = document.getElementById('form-endgame');
+  if (form) {
+    form.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); btnFinalizar && btnFinalizar.click(); }
+    });
+  }
 
-    // Estrutura compatível com o grafico.js
-    const dadosCompletos = {
-      num_equipe: numEquipe,
-      estrategia: dadosEndgame.estrategia,
-      dados: {
-        endgame: {
-          labelCompleto: dadosEndgame.labelCompleto,
-          labelParcial: dadosEndgame.labelParcial,
-          parou: dadosEndgame.parou,
-          penalidades: dadosEndgame.penalidades || "0"
-        }
-      },
-      observacoes: dadosEndgame.observacoes || ""
-    };
-
-    // SALVA NO LOCALSTORAGE 
-    try {
-      // Pega scouts existentes ou cria array vazio
-      const scoutsExistentes = JSON.parse(localStorage.getItem('scouts')) || [];
-      
-      // Verifica se já existe um scout para esta equipe
-      const scoutExistenteIndex = scoutsExistentes.findIndex(scout => scout.num_equipe === numEquipe);
-      
-      if (scoutExistenteIndex !== -1) {
-        // ✅ ATUALIZA scout existente (adiciona/mantém endgame)
-        scoutsExistentes[scoutExistenteIndex].dados.endgame = dadosCompletos.dados.endgame;
-        scoutsExistentes[scoutExistenteIndex].estrategia = dadosCompletos.estrategia;
-        scoutsExistentes[scoutExistenteIndex].observacoes = dadosCompletos.observacoes;
-        console.log("✅ EndGame ATUALIZADO para equipe:", numEquipe);
+  // util: preencher selects com placeholder
+  function preencherSelectPlaceholderOptions(selectEl, lista) {
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    lista.forEach((v, idx) => {
+      const opt = document.createElement('option');
+      opt.textContent = v;
+      if (idx === 0 && /selecion|selecione/i.test(v)) {
+        opt.value = '';
+        opt.selected = true;
+        opt.disabled = true;
       } else {
-        // Cria novo scout
-        scoutsExistentes.push(dadosCompletos);
-        console.log("✅ NOVO scout com EndGame criado para equipe:", numEquipe);
+        const lower = String(v).toLowerCase();
+        if (lower === 'sim') opt.value = 'sim';
+        else if (lower === 'não' || lower === 'nao') opt.value = 'nao';
+        else opt.value = v;
       }
-      
-      // Salva de volta no localStorage
-      localStorage.setItem('scouts', JSON.stringify(scoutsExistentes));
-      
-      console.log('💾 EndGame salvo com sucesso!', dadosCompletos);
-      alert('Dados do End Game salvos com sucesso!');
-      
-      // Redireciona para a página de gráficos
-      window.location.href = 'graficos.html';
-      
-    } catch (error) {
-      console.error('❌ Erro ao salvar EndGame:', error);
-      alert('Erro ao salvar dados. Verifique o console.');
-    }
-  });
+      selectEl.appendChild(opt);
+    });
+  }
 
-  // Botão Voltar
-  document.getElementById("voltarBtn").addEventListener("click", () => {
-    window.location.href = 'teleop.html';
-  });
 });
