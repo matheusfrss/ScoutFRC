@@ -1,47 +1,45 @@
-// === autonomo.js ===
-// garante que o script principal (script.js) já carregou
-if (!window.API_BASE) {
-    console.error("Erro: script.js não carregado antes de autonomo.js");
-}
-
-// Espera o DOM estar pronto
+// frontend/assets/autonomo.js
 document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("form-autonomo");
-    const btnProximo = document.getElementById("btnProximo");
-    const btnVoltar = document.getElementById("btnVoltar");
+  const btnVoltar = document.getElementById("btnVoltar");
+  const btnProximo = document.getElementById("btnProximo");
 
-    // Carrega dados do localStorage (caso existam)
-    const roboAtual = JSON.parse(localStorage.getItem("robo_dados") || "{}");
+  // preenche se já existente
+  const reg = AppStorage.getRegistro();
+  if (reg && reg.dados && reg.dados.autonomo) {
+    const a = reg.dados.autonomo;
+    if (document.getElementById("linha")) document.getElementById("linha").value = a.linha || "";
+    if (document.getElementById("artefatosMedievais")) document.getElementById("artefatosMedievais").value = a.artefatosMedievais ?? 0;
+    if (document.getElementById("artefatosPreHistoricos")) document.getElementById("artefatosPreHistoricos").value = a.artefatosPreHistoricos ?? 0;
+  }
 
-    if (roboAtual?.dados?.autonomo) {
-        const auto = roboAtual.dados.autonomo;
-        document.getElementById("linha").value = auto.linha || "";
-        document.getElementById("artefatosMedievais").value = auto.artefatosMedievais || 0;
-        document.getElementById("artefatosPreHistoricos").value = auto.artefatosPreHistoricos || 0;
-    }
-
-    // === Botão "Próximo" ===
-    btnProximo.addEventListener("click", async () => {
-        const dadosAutonomo = {
-            linha: document.getElementById("linha").value,
-            artefatosMedievais: Number(document.getElementById("artefatosMedievais").value || 0),
-            artefatosPreHistoricos: Number(document.getElementById("artefatosPreHistoricos").value || 0)
-        };
-
-        // Atualiza localStorage com a etapa atual
-        const dadosExistentes = JSON.parse(localStorage.getItem("robo_dados") || "{}");
-        dadosExistentes.dados = dadosExistentes.dados || {};
-        dadosExistentes.dados.autonomo = dadosAutonomo;
-        localStorage.setItem("robo_dados", JSON.stringify(dadosExistentes));
-
-        console.log("✅ Dados salvos (Autônomo):", dadosAutonomo);
-
-        // Avança para a próxima etapa
-        window.location.href = "teleop.html";
+  if (btnVoltar) {
+    btnVoltar.addEventListener("click", (e) => {
+      e.preventDefault();
+      window.location.href = "index.html";
     });
+  }
 
-    // === Botão "Voltar" ===
-    btnVoltar.addEventListener("click", () => {
-        window.location.href = "index.html";
+  if (btnProximo) {
+    btnProximo.addEventListener("click", (e) => {
+      e.preventDefault();
+      const linha = document.getElementById("linha").value;
+      const artefatosMedievais = Number(document.getElementById("artefatosMedievais").value || 0);
+      const artefatosPreHistoricos = Number(document.getElementById("artefatosPreHistoricos").value || 0);
+
+      // valida se deseja (opcional)
+      if (!linha) {
+        alert("Selecione se o robô ultrapassou a linha de largada (Sim/Não).");
+        return;
+      }
+
+      AppStorage.savePartial("autonomo", {
+        linha,
+        artefatosMedievais,
+        artefatosPreHistoricos
+      });
+
+      // próximo passo
+      window.location.href = "teleoperado.html";
     });
+  }
 });

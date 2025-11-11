@@ -1,150 +1,52 @@
 // frontend/assets/endgame.js
-// Envia os dados finais ao backend (PUT se já existir id, POST se novo).
-// Em caso de falha, salva payload no outbox (localStorage) para reenviar depois.
 document.addEventListener("DOMContentLoaded", () => {
-  const REG_KEY = "robo_dados";
-  const OUTBOX_KEY = "outbox";
-  // usa BASE já exposto por script.js se existir; senão usa origin
-  const API_BASE = window.API_BASE || window.location.origin;
-
-  // elementos do formulário/endgame
-  const elEstComp = document.getElementById("estacionouCompleto");
-  const elEstParc = document.getElementById("estacionouParcial");
-  const elRoboParou = document.getElementById("roboParou");
-  const elPenal = document.getElementById("penalidades");
-  const elEstrategia = document.getElementById("estrategia");
-  const elObs = document.getElementById("observacoes");
-  const elNumEquipe = document.getElementById("numEquipeInput");
   const btnVoltar = document.getElementById("btnVoltar");
   const btnFinalizar = document.getElementById("finalizarBtn");
 
-  // util: ler registro atual
-  function carregarRegistro() {
+  // Helper: leitura da "outbox" local (lista)
+  function loadOutbox() {
     try {
-      return JSON.parse(localStorage.getItem(REG_KEY) || "null");
+      return JSON.parse(localStorage.getItem("robo_outbox") || "[]");
     } catch (e) {
-      return null;
+      return [];
     }
   }
-
-  // util: salvar registro localmente
-  function salvarRegistroLocal(reg) {
-    try {
-      localStorage.setItem(REG_KEY, JSON.stringify(reg));
-    } catch (e) {
-      console.error("Erro ao salvar registro local:", e);
-    }
+  function saveOutbox(list) {
+    localStorage.setItem("robo_outbox", JSON.stringify(list || []));
   }
-
-  // util: adicionar item ao outbox
   function pushOutbox(item) {
-    try {
-      const arr = JSON.parse(localStorage.getItem(OUTBOX_KEY) || "[]");
-      arr.push(item);
-      localStorage.setItem(OUTBOX_KEY, JSON.stringify(arr));
-      // atualiza contador visual se existir
-      const oc = document.getElementById("outboxCount");
-      if (oc) oc.textContent = String(arr.length);
-    } catch (e) {
-      console.error("Erro ao gravar outbox:", e);
-    }
+    const l = loadOutbox();
+    l.push(item);
+    saveOutbox(l);
   }
 
-  // tenta reenviar itens no outbox (usado opcionalmente)
+  // Helper: tentará enviar itens pendentes da outbox (chamar manualmente se quiser)
   async function flushOutbox() {
-    try {
-      let arr = JSON.parse(localStorage.getItem(OUTBOX_KEY) || "[]");
-      if (!arr.length) return { sent: 0, remaining: 0 };
-
-      const remaining = [];
-      let sent = 0;
-
-      for (const item of arr) {
-        try {
-          if (item.method === "POST") {
-            const r = await fetch(`${API_BASE}${item.path}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item.body),
-            });
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            sent++;
-          } else if (item.method === "PUT") {
-            // item.path deve conter /api/atualizar_robo/<id>
-            const r = await fetch(`${API_BASE}${item.path}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item.body),
-            });
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            sent++;
-          } else {
-            // desconhecido -> manter
-            remaining.push(item);
-          }
-        } catch (err) {
-          console.warn("Falha ao reenviar item do outbox:", err, item);
-          remaining.push(item);
-        }
-      }
-
-      localStorage.setItem(OUTBOX_KEY, JSON.stringify(remaining));
-      const oc = document.getElementById("outboxCount");
-      if (oc) oc.textContent = String(remaining.length);
-      return { sent, remaining: remaining.length };
-    } catch (e) {
-      console.error("Erro ao processar outbox:", e);
-      return { sent: 0, remaining: 0 };
-    }
-  }
-
-  // preenche selects simples caso o HTML não tenha opções
-  function ensureSelectOptions() {
-    const yesNo = [
-      { v: "", t: "Selecione..." },
-      { v: "sim", t: "Sim" },
-      { v: "nao", t: "Não" },
-    ];
-    const fill = (el) => {
-      if (!el) return;
-      if (el.options.length <= 1) {
-        el.innerHTML = "";
-        yesNo.forEach((o) => {
-          const opt = document.createElement("option");
-          opt.value = o.v;
-          opt.textContent = o.t;
-          el.appendChild(opt);
+    const list = loadOutbox();
+    if (!list.length) return;
+    const remaining = [];
+    for (const item of list) {
+      try {
+        const r = await fetch("/api/salvar_robo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item)
         });
+        if (!r.ok) {
+          // keep for retry
+          remaining.push(item);
+        } else {
+          // sucesso: nada a fazer (item consumido)
+          // optionally read response if needed: await r.json()
+        }
+      } catch (err) {
+        remaining.push(item);
       }
-    };
-    fill(elEstComp);
-    fill(elEstParc);
-    fill(elRoboParou);
+    }
+    saveOutbox(remaining);
   }
 
-  ensureSelectOptions();
-
-  // popula campos se registro já existir
-  const registro = carregarRegistro();
-  if (!registro) {
-    alert("Nenhum registro ativo. Você será redirecionado para a página inicial.");
-    window.location.href = "index.html";
-    return;
-  }
-
-  (function preencherCampos() {
-    const dados = registro.dados || {};
-    const end = dados.endgame || {};
-    if (elEstComp) elEstComp.value = end.estacionouCompleto || "";
-    if (elEstParc) elEstParc.value = end.estacionouParcial || "";
-    if (elRoboParou) elRoboParou.value = end.roboParou || "";
-    if (elPenal) elPenal.value = end.penalidades || "";
-    if (elEstrategia) elEstrategia.value = end.estrategia || "";
-    if (elObs) elObs.value = end.observacoes || "";
-    if (elNumEquipe) elNumEquipe.value = registro.numEquipe || registro.num_equipe || "";
-  })();
-
-  // voltar
+  // Voltará para a tela anterior
   if (btnVoltar) {
     btnVoltar.addEventListener("click", (e) => {
       e.preventDefault();
@@ -152,151 +54,110 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // função que monta o payload final esperado pelo backend
-  function montarPayload(finalRegistro) {
-    return {
-      dados: finalRegistro.dados || {},
-      estrategia: finalRegistro.estrategia || finalRegistro.dados?.endgame?.estrategia || null,
-      observacoes:
-        finalRegistro.observacoes || finalRegistro.dados?.endgame?.observacoes || null,
-      num_equipe: finalRegistro.numEquipe || finalRegistro.num_equipe || null,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  // enviar: se tiver id -> PUT /api/atualizar_robo/<id>, se não -> POST /api/salvar_robo
-  async function enviarRegistro(finalRegistro) {
-    const payload = montarPayload(finalRegistro);
-    // detecta id (pode ser id, _id ou id retornado pelo backend)
-    const id =
-      finalRegistro.id ||
-      finalRegistro._id ||
-      finalRegistro.id_robo ||
-      finalRegistro.num_robo ||
-      null;
-
-    if (id) {
-      // PUT
-      const path = `/api/atualizar_robo/${id}`;
-      try {
-        const resp = await fetch(`${API_BASE}${path}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        const j = await resp.json().catch(() => null);
-        return { ok: true, result: j };
-      } catch (err) {
-        // em erro, empilha para outbox com método PUT
-        pushOutbox({ method: "PUT", path, body: payload, original: finalRegistro, when: new Date().toISOString() });
-        return { ok: false, error: err };
-      }
-    } else {
-      // POST
-      const path = `/api/salvar_robo`;
-      try {
-        const resp = await fetch(`${API_BASE}${path}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(Object.assign({}, finalRegistro, { dados: finalRegistro.dados || {} })),
-        });
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        const j = await resp.json().catch(() => null);
-        // se backend retornou id, atualiza local
-        if (j && j.id) {
-          finalRegistro.id = j.id;
-          finalRegistro._id = j.id;
-          salvarRegistroLocal(finalRegistro);
-        }
-        return { ok: true, result: j };
-      } catch (err) {
-        // em erro, empilha para outbox com método POST
-        pushOutbox({ method: "POST", path, body: Object.assign({}, finalRegistro, { dados: finalRegistro.dados || {} }), when: new Date().toISOString() });
-        return { ok: false, error: err };
-      }
-    }
-  }
-
-  // handler do botão finalizar
+  // Finalizar: monta o objeto final e tenta enviar
   if (btnFinalizar) {
     btnFinalizar.addEventListener("click", async (e) => {
       e.preventDefault();
-      btnFinalizar.disabled = true;
-      btnFinalizar.textContent = "Enviando...";
 
-      // coleta valores
-      const estacionouCompleto = elEstComp ? elEstComp.value : "";
-      const estacionouParcial = elEstParc ? elEstParc.value : "";
-      const roboParou = elRoboParou ? elRoboParou.value : "";
-      const penalidades = elPenal ? elPenal.value.trim() : "";
-      const estrategia = elEstrategia ? elEstrategia.value : "";
-      const observacoes = elObs ? elObs.value.trim() : "";
-      const numEquipeVal = elNumEquipe ? elNumEquipe.value.trim() : "";
+      // Pega registro atual do AppStorage (assumo que storage.js oferece getRegistro/savePartial)
+      let registro = null;
+      try {
+        if (typeof AppStorage !== "undefined" && typeof AppStorage.getRegistro === "function") {
+          registro = AppStorage.getRegistro() || {};
+        } else {
+          // fallback read direto do localStorage (mesmo formato esperado)
+          registro = JSON.parse(localStorage.getItem("robo_dados") || "null") || {};
+        }
+      } catch (err) {
+        registro = {};
+      }
 
-      // atualiza registro local
-      const novoRegistro = carregarRegistro() || {};
-      novoRegistro.dados = novoRegistro.dados || {};
-      novoRegistro.dados.endgame = {
+      // lê os campos do End Game no DOM
+      const estacionouCompleto = document.getElementById("estacionouCompleto") ? document.getElementById("estacionouCompleto").value : "";
+      const estacionouParcial = document.getElementById("estacionouParcial") ? document.getElementById("estacionouParcial").value : "";
+      const roboParou = document.getElementById("roboParou") ? document.getElementById("roboParou").value : "";
+      const penalidades = document.getElementById("penalidades") ? document.getElementById("penalidades").value.trim() : "";
+      const estrategia = document.getElementById("estrategia") ? document.getElementById("estrategia").value : "";
+      const observacoes = document.getElementById("observacoes") ? document.getElementById("observacoes").value.trim() : "";
+      const numEquipeInput = document.getElementById("numEquipeInput") ? document.getElementById("numEquipeInput").value : "";
+
+      // validações mínimas
+      if (!registro || (!registro.numEquipe && !numEquipeInput)) {
+        alert("Nenhum registro ativo. Preencha a página inicial antes de finalizar.");
+        return;
+      }
+
+      // garante que os dados estão presentes
+      registro.dados = registro.dados || {};
+      registro.dados.endgame = {
         estacionouCompleto,
         estacionouParcial,
         roboParou,
         penalidades,
         estrategia,
-        observacoes,
-        savedAt: new Date().toISOString(),
+        observacoes
       };
 
-      if (numEquipeVal) {
-        const n = Number(numEquipeVal);
-        if (!Number.isNaN(n)) {
-          novoRegistro.numEquipe = n;
-          novoRegistro.num_equipe = n;
+      // se o usuario informou número de equipe no endgame, sobrescreve
+      if (numEquipeInput) {
+        try {
+          registro.numEquipe = Number(numEquipeInput);
+        } catch (e) {
+          // ignora
         }
       }
 
-      salvarRegistroLocal(novoRegistro);
+      // timestamp final
+      registro.timestamp = new Date().toISOString();
 
-      // tenta enviar
-      const res = await enviarRegistro(novoRegistro);
+      // Mostrar ao usuário que está enviando
+      btnFinalizar.disabled = true;
+      btnFinalizar.textContent = "Enviando...";
 
-      if (res.ok) {
-        // remove registro local (opcional) e atualiza contador outbox
-        try {
-          localStorage.removeItem(REG_KEY);
-        } catch (e) {}
-        // tentar flush do outbox (opcional, não obrigatório)
-        try {
-          const flushRes = await flushOutbox();
-          console.log("Flush outbox =>", flushRes);
-        } catch (e) {
-          console.warn("Flush outbox falhou:", e);
+      // Tenta enviar ao backend
+      try {
+        const resp = await fetch("/api/salvar_robo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(registro)
+        });
+
+        if (!resp.ok) {
+          // erro HTTP (500, 400, etc.)
+          const text = await resp.text().catch(() => "");
+          // Guarda no outbox para retry se falhar
+          pushOutbox(registro);
+          alert("Erro ao enviar para o servidor. Registro salvo localmente na outbox. Detalhe: " + (text || resp.statusText || resp.status));
+          console.error("Erro enviar:", resp.status, text);
+          btnFinalizar.disabled = false;
+          btnFinalizar.textContent = "Finalizar ✅";
+          return;
         }
 
-        alert("✅ Registro finalizado e enviado (ou enfileirado). Voltando ao início.");
-        // atualiza contador visual
-        const oc = document.getElementById("outboxCount");
-        if (oc) {
-          const arr = JSON.parse(localStorage.getItem(OUTBOX_KEY) || "[]");
-          oc.textContent = String(arr.length);
-        }
-        // redireciona
+        // sucesso: remove registro local (se existir) e tenta limpar outbox remanescente
+        try {
+          if (typeof AppStorage !== "undefined" && typeof AppStorage.clearRegistro === "function") {
+            AppStorage.clearRegistro();
+          } else {
+            localStorage.removeItem("robo_dados");
+          }
+        } catch (e) { /* ignore */ }
+
+        // tenta enviar tudo da outbox (em background)
+        try { flushOutbox(); } catch (e) { /* ignore */ }
+
+        // feedback e redirecionamento
+        alert("Registro enviado com sucesso!");
+        // redireciona ao início ou limpa a UI
         window.location.href = "index.html";
-      } else {
-        // já foi empilhado no outbox dentro de enviarRegistro
-        alert("⚠️ Não foi possível enviar agora. Registro salvo como pendente. Voltando ao início.");
+      } catch (err) {
+        // rede/offline: salva na outbox
+        pushOutbox(registro);
+        console.error("Erro de rede ao enviar registro:", err);
+        alert("Sem conexão ou erro na rede. Registro salvo na outbox para envio posterior.");
         btnFinalizar.disabled = false;
         btnFinalizar.textContent = "Finalizar ✅";
-        window.location.href = "index.html";
       }
     });
   }
-
-  // expõe funções para debug no console
-  window._endgame = {
-    carregarRegistro,
-    salvarRegistroLocal,
-    pushOutbox,
-    flushOutbox,
-  };
 });
