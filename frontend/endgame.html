@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>End Game - Sistema Scout</title>
   <link rel="stylesheet" href="./assets/style.css">
-  <script defer src=".//assets/endgame.js"></script>
 </head>
 <body>
 
@@ -12,50 +11,61 @@
     <nav id="menu-nav"></nav>
   </header>
 
-  <div class="container">
+  <main class="container">
     <h2>End Game</h2>
 
-    <div class="campo">
-      <label id="labelCompleto"></label>
-      <select id="estacionouCompleto"></select>
-    </div>
+    <form id="form-endgame">
 
-  <div>
-  <label for="numEquipe">Número da Equipe:</label>
-  <input type="number" id="numEquipe" required>
-  </div>
+      <div class="campo">
+        <label for="estacionouCompleto">Estacionou completo?</label>
+        <select id="estacionouCompleto" required></select>
+      </div>
 
+      <div class="campo">
+        <label for="estacionouParcial">Estacionou parcial?</label>
+        <select id="estacionouParcial" required></select>
+      </div>
 
-    <div class="campo">
-      <label id="labelParcial"></label>
-      <select id="estacionouParcial"></select>
-    </div>
+      <div class="campo">
+        <label for="roboParou">O robô parou?</label>
+        <select id="roboParou" required></select>
+      </div>
 
-    <div class="campo">
-      <label id="labelParou"></label>
-      <select id="roboParou"></select>
-    </div>
+      <div class="campo">
+        <label for="penalidades">Penalidades (breve):</label>
+        <input id="penalidades" type="text" maxlength="100" placeholder="ex: 1 falta, 0 amarelos">
+      </div>
 
-    <div class="campo">
-      <label id="labelPenalidades"></label>
-      <input type="text" id="penalidades">
-    </div>
+      <div class="campo">
+        <label for="estrategia">Estratégia observada</label>
+        <select id="estrategia">
+          <option value="">Selecione...</option>
+          <option value="ofensiva">Ofensiva</option>
+          <option value="defensiva">Defensiva</option>
+          <option value="mista">Mista</option>
+          <option value="outra">Outra</option>
+        </select>
+      </div>
 
-    <div class="campo">
-      <label id="labelEstrategia"></label>
-      <select id="estrategia"></select>
-    </div>
+      <div class="campo">
+        <label for="observacoes">Observações</label>
+        <textarea id="observacoes" maxlength="250" placeholder="Observações gerais (250 chars)"></textarea>
+      </div>
 
-    <div class="campo">
-      <label id="labelObservacoes"></label>
-      <textarea id="observacoes" maxlength="250"></textarea>
-    </div>
+      <div class="campo">
+        <label for="numEquipeInput">Número da Equipe (opcional)</label>
+        <input id="numEquipeInput" type="number" min="1" placeholder="Se vazio, usa equipe selecionada na inicial">
+      </div>
 
-    <div class="navegacao">
-      <button onclick="window.location.href='teleop.html'">⬅ Voltar</button>
-      <button id="finalizarBtn">Finalizar ✅</button>
-    </div>
-  </div>
+      <div class="navegacao">
+        <button type="button" id="btnVoltar">⬅ Voltar</button>
+        <button type="button" id="finalizarBtn">Finalizar ✅</button>
+      </div>
+    </form>
+  </main>
 
+  <!-- SCRIPTS: script.js primeiro (globais), depois o específico -->
+  <script src="./assets/script.js"></script>
+  <script src="./assets/endgame.js"></script>
 </body>
 </html>
