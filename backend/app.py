@@ -1,253 +1,347 @@
 # backend/app.py
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-import sqlite3
-import psycopg2
-import json
 import os
+import json
 from dotenv import load_dotenv
+import sqlite3
 
-load_dotenv()  # carrega .env local
+# opcional: psycopg2 para Postgres (Supabase)
+try:
+    import psycopg2
+    import psycopg2.extras
+except Exception:
+    psycopg2 = None
 
-app = Flask(__name__)
+load_dotenv()  # carrega .env local se existir
+
+app = Flask(__name__, static_folder=None)
 CORS(app)
 
+# =============================================================
 # CONFIG
+# =============================================================
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
 app.config["SECRET_KEY"] = SECRET_KEY
 
-IS_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith("postgres"))
+USE_POSTGRES = bool(DATABASE_URL) and (DATABASE_URL.startswith("postgres") or DATABASE_URL.startswith("postgresql"))
+print("🔧 Config:", {
+    "DATABASE_URL": DATABASE_URL if DATABASE_URL else "sqlite (local)",
+    "USE_POSTGRES": USE_POSTGRES
+})
 
-# Conexão dinâmica: Postgres (psycopg2 + ssl) ou SQLite local
+# =============================================================
+# CONEXÃO COM BANCO
+# =============================================================
+def get_sqlite_path():
+    return os.path.join(os.path.dirname(__file__), "scout.db")
+
 def get_db_connection():
-    try:
-        if IS_POSTGRES:
-            print("📡 Conectando ao banco PostgreSQL (Supabase)...")
-            # usar sslmode=require para Supabase
-            conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-            return conn
-        else:
-            db_path = os.path.join(os.path.dirname(__file__), "scout.db")
-            print(f"💾 Conectando SQLite local: {db_path}")
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            return conn
-    except Exception as e:
-        print(f"❌ Erro ao conectar no banco: {e}")
-        raise
+    """Retorna uma conexão com o banco (Postgres ou SQLite)."""
+    if USE_POSTGRES:
+        if not psycopg2:
+            raise RuntimeError("psycopg2 não está instalado, mas DATABASE_URL está configurado para Postgres.")
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+        return conn
+    else:
+        db_path = get_sqlite_path()
+        conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+        conn.row_factory = sqlite3.Row
+        return conn
 
-# Helper: cria tabela com SQL apropriado para cada DB
+# =============================================================
+# FUNÇÕES AUXILIARES
+# =============================================================
+def deep_merge(a, b):
+    """Faz merge recursivo de dicionários."""
+    if not isinstance(a, dict):
+        a = {}
+    if not isinstance(b, dict):
+        return a
+    for k, v in b.items():
+        if k in a and isinstance(a[k], dict) and isinstance(v, dict):
+            a[k] = deep_merge(a[k], v)
+        else:
+            a[k] = v
+    return a
+
+# =============================================================
+# CRIAÇÃO AUTOMÁTICA DE TABELA
+# =============================================================
 def criar_tabela():
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        if IS_POSTGRES:
-            cur.execute('''
+        if USE_POSTGRES:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS robos (
                     id SERIAL PRIMARY KEY,
-                    num_equipe INTEGER NOT NULL,
-                    dados_json TEXT NOT NULL,
-                    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    num_equipe INTEGER,
+                    dados_json JSONB NOT NULL,
+                    estrategia TEXT,
+                    observacoes TEXT,
+                    data_criacao TIMESTAMPTZ DEFAULT NOW()
                 );
-            ''')
+            """)
+            conn.commit()
+            cur.close()
+            conn.close()
+            print("✅ Tabela 'robos' criada/verificada (Postgres).")
         else:
-            cur.execute('''
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS robos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    num_equipe INTEGER NOT NULL,
+                    num_equipe INTEGER,
                     dados_json TEXT NOT NULL,
+                    estrategia TEXT,
+                    observacoes TEXT,
                     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        conn.commit()
-        cur.close()
-        conn.close()
-        print("✅ Tabela 'robos' criada/verificada com sucesso!")
+                );
+            """)
+            conn.commit()
+            conn.close()
+            print("✅ Tabela 'robos' criada/verificada (SQLite).")
     except Exception as e:
-        print(f"❌ Erro ao criar tabela: {e}")
+        print("❌ Erro ao criar tabela:", e)
 
-# ===== ROTAS =====
+# =============================================================
+# ENDPOINTS
+# =============================================================
 
-# Rota para salvar (retorna id do registro criado)
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({"status": "online", "db": "postgres" if USE_POSTGRES else "sqlite"})
+
+# -------------------------------------------------------------
 @app.route('/api/salvar_robo', methods=['POST'])
 def salvar_robo():
     try:
-        dados = request.get_json()
-        print("📝 Dados recebidos:", dados)
+        dados = request.get_json(force=True)
+        print("📝 Dados recebidos (salvar_robo):", dados)
 
-        conn = get_db_connection()
-        cur = conn.cursor()
+        num_equipe = dados.get('numEquipe') or dados.get('num_equipe') or None
+        try:
+            if num_equipe is not None:
+                num_equipe = int(num_equipe)
+        except Exception:
+            num_equipe = None
 
-        if IS_POSTGRES:
-            # usar RETURNING id para obter o id gerado
+        if USE_POSTGRES:
+            conn = get_db_connection()
+            cur = conn.cursor()
             cur.execute(
-                'INSERT INTO robos (num_equipe, dados_json) VALUES (%s, %s) RETURNING id;',
-                (dados.get('numEquipe', 0), json.dumps(dados))
+                "INSERT INTO robos (num_equipe, dados_json) VALUES (%s, %s) RETURNING id;",
+                (num_equipe, psycopg2.extras.Json(dados))
             )
             new_id = cur.fetchone()[0]
+            conn.commit()
+            cur.close()
+            conn.close()
         else:
+            conn = get_db_connection()
+            cur = conn.cursor()
             cur.execute(
-                'INSERT INTO robos (num_equipe, dados_json) VALUES (?, ?)',
-                (dados.get('numEquipe', 0), json.dumps(dados))
+                "INSERT INTO robos (num_equipe, dados_json) VALUES (?, ?);",
+                (num_equipe, json.dumps(dados))
             )
             new_id = cur.lastrowid
-
-        conn.commit()
-        cur.close()
-        conn.close()
+            conn.commit()
+            conn.close()
 
         return jsonify({"status": "sucesso", "message": "Robô salvo no banco!", "id": new_id}), 201
     except Exception as e:
         print("❌ Erro em salvar_robo:", e)
         return jsonify({"status": "erro", "message": str(e)}), 500
 
-# Endpoint batch para importar vários itens de uma vez
+# -------------------------------------------------------------
 @app.route('/api/import', methods=['POST'])
 def import_many():
-    """
-    Recebe um array de objetos e insere todos na tabela 'robos' dentro de uma transação.
-    Retorna quantos foram inseridos e os ids criados.
-    """
     try:
-        items = request.get_json()
+        items = request.get_json(force=True)
         if not isinstance(items, list):
             return jsonify({"status": "erro", "message": "esperado um array de objetos"}), 400
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-
         inserted_ids = []
-        try:
-            if IS_POSTGRES:
+        if USE_POSTGRES:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            try:
                 for item in items:
+                    num_equipe = item.get('numEquipe') or item.get('num_equipe') or None
                     cur.execute(
-                        'INSERT INTO robos (num_equipe, dados_json) VALUES (%s, %s) RETURNING id;',
-                        (item.get('numEquipe', 0), json.dumps(item))
+                        "INSERT INTO robos (num_equipe, dados_json) VALUES (%s, %s) RETURNING id;",
+                        (num_equipe, psycopg2.extras.Json(item))
                     )
                     inserted_ids.append(cur.fetchone()[0])
-            else:
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cur.close()
+                conn.close()
+        else:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            try:
                 for item in items:
+                    num_equipe = item.get('numEquipe') or item.get('num_equipe') or None
                     cur.execute(
-                        'INSERT INTO robos (num_equipe, dados_json) VALUES (?, ?)',
-                        (item.get('numEquipe', 0), json.dumps(item))
+                        "INSERT INTO robos (num_equipe, dados_json) VALUES (?, ?);",
+                        (num_equipe, json.dumps(item))
                     )
                     inserted_ids.append(cur.lastrowid)
-
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            print("❌ Erro durante import_many transaction:", e)
-            raise
-        finally:
-            cur.close()
-            conn.close()
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
 
         return jsonify({"status": "sucesso", "inserted": len(inserted_ids), "ids": inserted_ids}), 201
     except Exception as e:
         print("❌ Erro em import_many:", e)
         return jsonify({"status": "erro", "message": str(e)}), 500
 
-# Helper para executar SELECT e retornar linhas padronizadas
-def fetch_all_robos(conn):
-    rows_out = []
-    try:
-        cur = conn.cursor()
-        if IS_POSTGRES:
-            cur.execute('SELECT id, num_equipe, dados_json, data_criacao FROM robos ORDER BY data_criacao DESC;')
-            rows = cur.fetchall()
-            cols = [d[0] for d in cur.description]
-            for r in rows:
-                # r é tupla; construir dict por indice
-                rowdict = dict(zip(cols, r))
-                rows_out.append(rowdict)
-        else:
-            cur = conn.cursor()
-            cur.execute('SELECT * FROM robos ORDER BY data_criacao DESC')
-            rows = cur.fetchall()
-            # sqlite3.Row permite indexação por nome
-            for r in rows:
-                rows_out.append({
-                    "id": r["id"],
-                    "num_equipe": r["num_equipe"],
-                    "dados_json": r["dados_json"],
-                    "data_criacao": r["data_criacao"]
-                })
-        cur.close()
-    except Exception as e:
-        print("❌ Erro em fetch_all_robos:", e)
-        raise
-    return rows_out
-
-# Rota para pegar todos robôs
+# -------------------------------------------------------------
 @app.route('/api/todos_robos', methods=['GET'])
 def todos_robos():
     try:
-        conn = get_db_connection()
-        raw_rows = fetch_all_robos(conn)
-        # se conexao psycopg2, precisamos fechar tambem
-        try:
+        lista = []
+        if USE_POSTGRES:
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute('SELECT * FROM robos ORDER BY data_criacao DESC;')
+            rows = cur.fetchall()
+            cur.close()
             conn.close()
-        except Exception:
-            pass
+            for row in rows:
+                lista.append({
+                    'id': row['id'],
+                    'num_equipe': row.get('num_equipe'),
+                    'dados': row.get('dados_json'),
+                    'estrategia': row.get('estrategia'),
+                    'observacoes': row.get('observacoes'),
+                    'data_criacao': row.get('data_criacao').isoformat() if row.get('data_criacao') else None
+                })
+        else:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT * FROM robos ORDER BY data_criacao DESC;')
+            rows = cur.fetchall()
+            conn.close()
+            for row in rows:
+                try:
+                    dados_parsed = json.loads(row['dados_json']) if row['dados_json'] else {}
+                except Exception:
+                    dados_parsed = {}
+                lista.append({
+                    'id': row['id'],
+                    'num_equipe': row['num_equipe'],
+                    'dados': dados_parsed,
+                    'estrategia': row['estrategia'],
+                    'observacoes': row['observacoes'],
+                    'data_criacao': row['data_criacao']
+                })
 
-        lista_robos = []
-        for robo in raw_rows:
-            # dados_json armazena o payload original (pode ser string)
-            dados_json = robo.get("dados_json") if "dados_json" in robo else robo.get("dados")
-            try:
-                parsed = json.loads(dados_json) if isinstance(dados_json, str) else (dados_json or {})
-            except Exception:
-                parsed = {}
-            lista_robos.append({
-                'id': robo.get('id'),
-                'num_equipe': robo.get('num_equipe'),
-                'dados': parsed,
-                'data_criacao': robo.get('data_criacao')
-            })
-
-        return jsonify(lista_robos)
+        return jsonify(lista)
     except Exception as e:
         print("❌ Erro em todos_robos:", e)
         return jsonify({"status": "erro", "message": str(e)}), 500
 
-# Health check
-@app.route('/api/health')
-def health():
-    db_type = "Postgres" if IS_POSTGRES else "SQLite"
-    return jsonify({"status": "online", "db": db_type})
+# -------------------------------------------------------------
+@app.route('/api/atualizar_robo/<int:robo_id>', methods=['PUT'])
+def atualizar_robo(robo_id):
+    """Atualiza um robô existente (merge dos dados e campos extras)."""
+    try:
+        payload = request.get_json(force=True)
+        if not isinstance(payload, dict):
+            return jsonify({"status": "erro", "message": "payload inválido"}), 400
 
-# Rota para debug - ver todos os dados
-@app.route('/api/debug')
+        if USE_POSTGRES:
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute("SELECT * FROM robos WHERE id = %s;", (robo_id,))
+            row = cur.fetchone()
+            if not row:
+                cur.close()
+                conn.close()
+                return jsonify({"status": "erro", "message": "Registro não encontrado"}), 404
+
+            existing = row['dados_json'] if isinstance(row['dados_json'], dict) else json.loads(row['dados_json'])
+            merged = deep_merge(existing, payload.get('dados', {}))
+
+            cur.execute(
+                "UPDATE robos SET dados_json=%s, estrategia=%s, observacoes=%s, num_equipe=%s WHERE id=%s;",
+                (psycopg2.extras.Json(merged),
+                 payload.get('estrategia', row.get('estrategia')),
+                 payload.get('observacoes', row.get('observacoes')),
+                 payload.get('num_equipe', row.get('num_equipe')),
+                 robo_id)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+        else:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM robos WHERE id = ?;", (robo_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return jsonify({"status": "erro", "message": "Registro não encontrado"}), 404
+
+            existing = json.loads(row['dados_json']) if row['dados_json'] else {}
+            merged = deep_merge(existing, payload.get('dados', {}))
+            cur.execute(
+                "UPDATE robos SET dados_json=?, estrategia=?, observacoes=?, num_equipe=? WHERE id=?;",
+                (json.dumps(merged),
+                 payload.get('estrategia', row['estrategia']),
+                 payload.get('observacoes', row['observacoes']),
+                 payload.get('num_equipe', row['num_equipe']),
+                 robo_id)
+            )
+            conn.commit()
+            conn.close()
+
+        return jsonify({"status": "sucesso", "message": "Robô atualizado com sucesso!"})
+    except Exception as e:
+        print("❌ Erro em atualizar_robo:", e)
+        return jsonify({"status": "erro", "message": str(e)}), 500
+
+# -------------------------------------------------------------
+@app.route('/api/debug', methods=['GET'])
 def debug_dados():
     try:
         conn = get_db_connection()
-        raw_rows = fetch_all_robos(conn)
-        try:
-            conn.close()
-        except Exception:
-            pass
-
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM robos ORDER BY id DESC;")
+        rows = cur.fetchall()
+        conn.close()
         lista = []
-        for robo in raw_rows:
-            dados_json = robo.get("dados_json") if "dados_json" in robo else robo.get("dados")
+        for r in rows:
             try:
-                parsed = json.loads(dados_json) if isinstance(dados_json, str) else (dados_json or {})
+                dados_parsed = json.loads(r['dados_json']) if r['dados_json'] else {}
             except Exception:
-                parsed = {}
+                dados_parsed = {}
             lista.append({
-                'id': robo.get('id'),
-                'num_equipe': robo.get('num_equipe'),
-                'dados': parsed,
-                'data_criacao': robo.get('data_criacao')
+                'id': r['id'],
+                'num_equipe': r['num_equipe'],
+                'dados': dados_parsed,
+                'estrategia': r['estrategia'],
+                'observacoes': r['observacoes'],
+                'data_criacao': r['data_criacao']
             })
-
         return jsonify({"total": len(lista), "robos": lista})
     except Exception as e:
-        print("❌ Erro em debug_dados:", e)
         return jsonify({"erro": str(e)}), 500
 
-# Servir frontend (ajuste o caminho relativo se necessário)
+# =============================================================
+# FRONTEND
+# =============================================================
 @app.route('/')
 def index():
     return send_from_directory('../frontend', 'index.html')
@@ -256,7 +350,9 @@ def index():
 def serve_static(filename):
     return send_from_directory('../frontend', filename)
 
-# Inicializar
+# =============================================================
+# MAIN
+# =============================================================
 if __name__ == '__main__':
     print("🚀 Iniciando servidor Flask...")
     criar_tabela()

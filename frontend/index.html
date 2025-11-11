@@ -3,18 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>Início - Sistema Scout</title>
-
-  <!-- Estilo principal -->
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
-  
-  <!-- ===================== CABEÇALHO ===================== -->
+
   <header>
     <nav id="menu-nav"></nav>
   </header>
 
-  <!-- ===================== CONTEÚDO PRINCIPAL ===================== -->
   <main class="container">
     <h2>Informações da Partida</h2>
 
@@ -26,15 +22,16 @@
         <input id="numPartida" type="number" min="1" required>
       </div>
 
-      <!-- Tipo de partida -->
+      <!-- Perguntas de tipo de partida -->
       <div class="campo">
-        <label for="tipoPartida">Tipo de partida:</label>
-        <select id="tipoPartida" required>
-          <option value="">Selecione...</option>
-          <option value="qualificatoria">Qualificatória</option>
-          <option value="eliminatoria">Eliminatória</option>
-          <option value="amistosa">Amistosa</option>
-        </select>
+        <label>Tipo de partida:</label>
+
+        <div class="opcoes-tipo">
+          <label><input type="checkbox" id="isPlayoff"> É uma playoff?</label><br>
+          <label><input type="checkbox" id="isTreino"> Partida de treino?</label><br>
+          <label><input type="checkbox" id="isQualificatoria"> Qualificatórias?</label><br>
+          <label><input type="checkbox" id="isSemifinal"> Semifinais?</label>
+        </div>
       </div>
 
       <!-- Número da equipe -->
@@ -53,7 +50,7 @@
         </select>
       </div>
 
-      <!-- Posição -->
+      <!-- Posição na arena -->
       <div class="campo">
         <label for="posicao">Posição na arena:</label>
         <select id="posicao" required>
@@ -77,15 +74,12 @@
 
     </form>
 
-    <!-- ===================== CONTROLES DE SINCRONIZAÇÃO ===================== -->
+    <!-- Seção de sincronização -->
     <section id="sync-controls" style="margin-top: 1.5rem;">
       <h3>Sincronização</h3>
-      <p>
-        Itens pendentes: <strong id="outboxCount">0</strong>
-      </p>
+      <p>Itens pendentes: <strong id="outboxCount">0</strong></p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button id="btnSync" type="button">Forçar Sincronização</button>
-        <button id="btnMigrate" type="button">Migrar dados antigos (scouts)</button>
         <button id="btnLimpar" type="button">Limpar dados locais</button>
       </div>
       <p style="font-size:0.9rem;color:#555;margin-top:8px;">
@@ -95,7 +89,7 @@
 
   </main>
 
-  <!-- Script principal -->
   <script src="./assets/script.js"></script>
+  <script src="./assets/inicio.js"></script>
 </body>
 </html>
